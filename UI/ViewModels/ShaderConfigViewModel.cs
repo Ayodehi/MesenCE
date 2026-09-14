@@ -23,7 +23,7 @@ public partial class ShaderConfigViewModel : DisposableViewModel
 		}
 
 		_shaderFile = shaderFile;
-		Config = ShaderConfig.LoadConfig(shaderFile);
+		Config = ShaderConfigHelper.LoadConfig(shaderFile);
 
 		if(allowPreview) {
 			AddDisposable(ReactiveHelper.RegisterRecursiveObserver(Config, (s, e) => Config.ApplyConfig()));

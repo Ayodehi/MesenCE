@@ -36,58 +36,6 @@ public partial class ShaderConfig : BaseConfig<GameConfig>
 		ShaderConfigHelper.ApplyConfig(ShaderFile, shaderParams);
 	}
 
-	public static ShaderConfig LoadConfig(string shaderFile)
-	{
-		if(string.IsNullOrWhiteSpace(shaderFile) || !File.Exists(shaderFile)) {
-			return new();
-		}
-
-		InteropShaderParam[] shaderParams = ConfigApi.GetShaderParams(shaderFile);
-
-		string path = Path.Combine(ConfigManager.ShaderConfigFolder, Path.GetFileNameWithoutExtension(shaderFile) + ".json");
-		ShaderConfig? cfg = null;
-		if(File.Exists(path)) {
-			string? fileData = FileHelper.ReadAllText(path);
-			if(fileData != null) {
-				try {
-					cfg = (ShaderConfig?)JsonSerializer.Deserialize(fileData, typeof(ShaderConfig), MesenSerializerContext.Default);
-				} catch { }
-			}
-		}
-
-		if(cfg == null) {
-			cfg = new ShaderConfig();
-		}
-
-		bool updateParams = cfg.Params.Count != shaderParams.Length;
-		if(!updateParams) {
-			for(int i = 0; i < shaderParams.Length; i++) {
-				if(cfg.Params[i].Name != shaderParams[i].GetName()) {
-					updateParams = true;
-					break;
-				}
-			}
-		}
-
-		if(updateParams) {
-			cfg.Params = shaderParams.Select(p => new ShaderParam() {
-				Name = p.GetName(),
-				Value = ToDecimal(p.Initial)
-			}).ToList();
-		}
-
-		for(int i = 0; i < shaderParams.Length; i++) {
-			cfg.Params[i].Description = shaderParams[i].GetDescription().Trim();
-			cfg.Params[i].Min = ToDecimal(shaderParams[i].Min);
-			cfg.Params[i].Max = ToDecimal(shaderParams[i].Max);
-			cfg.Params[i].Step = ToDecimal(shaderParams[i].Step);
-			cfg.Params[i].Initial = ToDecimal(shaderParams[i].Initial);
-		}
-
-		cfg.ShaderFile = shaderFile;
-		return cfg;
-	}
-
 	public void Save(string shaderFile)
 	{
 		string path = Path.Combine(ConfigManager.ShaderConfigFolder, Path.GetFileNameWithoutExtension(shaderFile) + ".json");
@@ -100,11 +48,6 @@ public partial class ShaderConfig : BaseConfig<GameConfig>
 		foreach(ShaderParam p in Params) {
 			p.Value = (decimal)p.Initial;
 		}
-	}
-
-	private static decimal ToDecimal(double v)
-	{
-		return Math.Round((decimal)v * 10000) / 10000;
 	}
 }
 
@@ -165,7 +108,74 @@ public static class ShaderConfigHelper
 {
 	private static UInt32 _version = 0;
 	private static string _prevShaderFile = "";
+	private static InteropShaderParam[]? _prevShaderParams = null;
 	private static InteropShaderParamValue[] _prevParamValues = Array.Empty<InteropShaderParamValue>();
+
+	public static ShaderConfig LoadConfig(string shaderFile)
+	{
+		if(string.IsNullOrWhiteSpace(shaderFile) || !File.Exists(shaderFile)) {
+			return new();
+		}
+
+		InteropShaderParam[] shaderParams;
+		if(_prevShaderFile == shaderFile && _prevShaderParams != null) {
+			shaderParams = _prevShaderParams;
+		} else {
+			//Only reload the shader parameters if the shader path changes
+			shaderParams = ConfigApi.GetShaderParams(shaderFile);
+			_prevShaderParams = shaderParams;
+			_prevShaderFile = shaderFile;
+			_prevParamValues = Array.Empty<InteropShaderParamValue>();
+		}
+
+		string path = Path.Combine(ConfigManager.ShaderConfigFolder, Path.GetFileNameWithoutExtension(shaderFile) + ".json");
+		ShaderConfig? cfg = null;
+		if(File.Exists(path)) {
+			string? fileData = FileHelper.ReadAllText(path);
+			if(fileData != null) {
+				try {
+					cfg = (ShaderConfig?)JsonSerializer.Deserialize(fileData, typeof(ShaderConfig), MesenSerializerContext.Default);
+				} catch { }
+			}
+		}
+
+		if(cfg == null) {
+			cfg = new ShaderConfig();
+		}
+
+		bool updateParams = cfg.Params.Count != shaderParams.Length;
+		if(!updateParams) {
+			for(int i = 0; i < shaderParams.Length; i++) {
+				if(cfg.Params[i].Name != shaderParams[i].GetName()) {
+					updateParams = true;
+					break;
+				}
+			}
+		}
+
+		if(updateParams) {
+			cfg.Params = shaderParams.Select(p => new ShaderParam() {
+				Name = p.GetName(),
+				Value = ToDecimal(p.Initial)
+			}).ToList();
+		}
+
+		for(int i = 0; i < shaderParams.Length; i++) {
+			cfg.Params[i].Description = shaderParams[i].GetDescription().Trim();
+			cfg.Params[i].Min = ToDecimal(shaderParams[i].Min);
+			cfg.Params[i].Max = ToDecimal(shaderParams[i].Max);
+			cfg.Params[i].Step = ToDecimal(shaderParams[i].Step);
+			cfg.Params[i].Initial = ToDecimal(shaderParams[i].Initial);
+		}
+
+		cfg.ShaderFile = shaderFile;
+		return cfg;
+	}
+
+	private static decimal ToDecimal(double v)
+	{
+		return Math.Round((decimal)v * 10000) / 10000;
+	}
 
 	public static void ApplyConfig(string shaderFile, InteropShaderParamValue[] paramValues)
 	{

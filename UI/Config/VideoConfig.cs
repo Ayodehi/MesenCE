@@ -83,7 +83,7 @@ namespace Mesen.Config
 				customAspectRatio = overrides.CustomAspectRatio;
 			}
 
-			ShaderConfig.LoadConfig(shaderFile).ApplyConfig();
+			ShaderConfigHelper.LoadConfig(shaderFile).ApplyConfig();
 
 			ConfigApi.SetVideoConfig(new InteropVideoConfig() {
 				CustomAspectRatio = customAspectRatio,
