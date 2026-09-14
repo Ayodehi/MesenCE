@@ -54,6 +54,8 @@ private:
 	uint32_t _frameHeight = 0;
 	uint32_t _frameWidth = 0;
 
+	uint32_t _frameNumber = 0;
+
 	bool _vsyncEnabled = false;
 
 	libra_instance_t _libra = {};

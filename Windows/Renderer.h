@@ -74,6 +74,8 @@ private:
 	uint32_t _emuFrameHeight = 0;
 	uint32_t _emuFrameWidth = 0;
 
+	uint32_t _frameNumber = 0;
+
 	ShaderConfig _shaderCfg = {};
 
 	atomic<int> _resetCounter = 0;

@@ -401,6 +401,8 @@ void LinuxOglRenderer::ClearFrame()
 
 void LinuxOglRenderer::UpdateFrame(RenderedFrame& frame)
 {
+	_frameNumber = frame.FrameNumber;
+
 	auto lock = _frameLock.AcquireSafe();
 	if(_frameBuffer == nullptr || _requiredWidth != frame.Width || _requiredHeight != frame.Height) {
 		_requiredWidth = frame.Width;
@@ -461,7 +463,7 @@ GLuint LinuxOglRenderer::ProcessSlangShader()
 	out_image.width = _screenWidth;
 	out_image.height = _screenHeight;
 
-	libra_error_t error = _libra.gl_filter_chain_frame(&_filterChain, _emu->GetFrameCount(), in_image, out_image, &viewport, nullptr, nullptr);
+	libra_error_t error = _libra.gl_filter_chain_frame(&_filterChain, _frameNumber, in_image, out_image, &viewport, nullptr, nullptr);
 
 	if(!error) {
 		return _outTexture;

@@ -685,6 +685,7 @@ void Renderer::ClearFrame()
 
 void Renderer::UpdateFrame(RenderedFrame& frame)
 {
+	_frameNumber = frame.FrameNumber;
 	SetScreenSize(frame.Width, frame.Height);
 
 	auto lock = _textureLock.AcquireSafe();
@@ -768,7 +769,7 @@ void Renderer::DrawScreen()
 		viewport.width = _screenWidth;
 		viewport.height = _screenHeight;
 
-		libra_error_t error = _libra.d3d11_filter_chain_frame(&_filterChain, _pDeviceContext, _emu->GetFrameCount(), _pTextureSrv, _pRenderTargetView, &viewport, NULL, &frame_opt);
+		libra_error_t error = _libra.d3d11_filter_chain_frame(&_filterChain, _pDeviceContext, _frameNumber, _pTextureSrv, _pRenderTargetView, &viewport, NULL, &frame_opt);
 		if(error) {
 			LogShaderError("[librashader] d3d11_filter_chain_frame failed: ", error);
 		}
