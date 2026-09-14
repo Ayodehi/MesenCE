@@ -262,6 +262,9 @@ namespace Mesen.Debugger.Utilities
 	public class ContextMenuSeparator : ContextMenuAction
 	{
 		public override string Name => "-";
+		protected override string InternalShortcutText => Header;
+
+		public string Header { get; set; } = "";
 
 		public ContextMenuSeparator()
 		{
@@ -895,7 +898,6 @@ namespace Mesen.Debugger.Utilities
 		LoadShader,
 		[IconFile("Close")]
 		ClearShader,
-		RecentShaders,
 		AllShaders,
 		[IconFile("Settings")]
 		ShaderSettings,

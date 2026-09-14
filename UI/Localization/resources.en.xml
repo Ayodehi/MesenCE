@@ -1884,6 +1884,8 @@ E
 		<Message ID="LabelOrCommentRequired">A label or a comment must be specified.</Message>
 		<Message ID="AddressOutOfRange">The address is out of range.</Message>
 		<Message ID="AddressHasOtherLabel">Another label exists for this address: {0}</Message>
+
+		<Message ID="RecentShaders">Recent shaders </Message>
 	</Messages>
 	<Enums>
 		<Enum ID="EmulatorShortcut">
@@ -3796,7 +3798,6 @@ E
 
 			<Value ID="Shader">Shaders</Value>
 			<Value ID="LoadShader">Load shader...</Value>
-			<Value ID="RecentShaders">Recent shaders</Value>
 			<Value ID="AllShaders">All shaders</Value>
 			<Value ID="ClearShader">Remove shader</Value>
 			<Value ID="ShaderSettings">Configure shader...</Value>

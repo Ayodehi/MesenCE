@@ -2,6 +2,7 @@
 using Mesen.Config;
 using Mesen.Debugger.Utilities;
 using Mesen.Interop;
+using Mesen.Localization;
 using Mesen.ViewModels;
 using Mesen.Windows;
 using System;
@@ -42,7 +43,25 @@ public static class ShaderMenuHelper
 						}.ShowCenteredDialog((Control)wnd);
 					}
 				},
+
+				new ContextMenuSeparator() {
+					IsVisible = () => ConfigManager.Config.RecentFiles.Shaders.Count > 0,
+					Header = ResourceHelper.GetMessage("RecentShaders")
+				},
+
+				GetRecentShaderItem(0, getter, setter),
+				GetRecentShaderItem(1, getter, setter),
+				GetRecentShaderItem(2, getter, setter),
+				GetRecentShaderItem(3, getter, setter),
+				GetRecentShaderItem(4, getter, setter),
+				GetRecentShaderItem(5, getter, setter),
+				GetRecentShaderItem(6, getter, setter),
+				GetRecentShaderItem(7, getter, setter),
+				GetRecentShaderItem(8, getter, setter),
+				GetRecentShaderItem(9, getter, setter),
+
 				new ContextMenuSeparator(),
+
 				new MainMenuAction() {
 					ActionType = ActionType.LoadShader,
 					OnClick = async () => {
@@ -50,22 +69,6 @@ public static class ShaderMenuHelper
 						if(shader != null) {
 							LoadShader(shader, getter, setter);
 						}
-					}
-				},
-				new MainMenuAction() {
-					ActionType = ActionType.RecentShaders,
-					IsEnabled = () => ConfigManager.Config.RecentFiles.Shaders.Count > 0,
-					SubActions = new List<object>() {
-						GetRecentShaderItem(0, getter, setter),
-						GetRecentShaderItem(1, getter, setter),
-						GetRecentShaderItem(2, getter, setter),
-						GetRecentShaderItem(3, getter, setter),
-						GetRecentShaderItem(4, getter, setter),
-						GetRecentShaderItem(5, getter, setter),
-						GetRecentShaderItem(6, getter, setter),
-						GetRecentShaderItem(7, getter, setter),
-						GetRecentShaderItem(8, getter, setter),
-						GetRecentShaderItem(9, getter, setter)
 					}
 				},
 				new MainMenuAction() {
@@ -164,6 +167,7 @@ public static class ShaderMenuHelper
 			ActionType = ActionType.Custom,
 			DynamicText = () => Path.GetFileNameWithoutExtension(getRecentFile(index)) ?? "",
 			IsVisible = () => getRecentFile(index) != null,
+			IsEnabled = () => File.Exists(getRecentFile(index)),
 			IsSelected = () => getRecentFile(index) == getter(),
 			OnClick = () => {
 				LoadShader(getRecentFile(index) ?? "", getter, setter);

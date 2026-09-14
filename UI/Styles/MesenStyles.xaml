@@ -1,7 +1,7 @@
 <Styles
 	xmlns="https://github.com/avaloniaui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:sys="clr-namespace:System;assembly=netstandard"	
+	xmlns:sys="clr-namespace:System;assembly=netstandard"
 	xmlns:c="using:Mesen.Controls"
 	xmlns:du="using:Mesen.Debugger.Utilities"
 >
@@ -169,7 +169,7 @@
 		<Setter Property="ItemsSource" Value="{Binding SubActions, DataType={x:Type du:BaseMenuAction}}" />
 		<Setter Property="Command" Value="{Binding ClickCommand, DataType={x:Type du:BaseMenuAction}}" />
 	</Style>
-	
+
 	<Style Selector="Button:pressed, RepeatButton:pressed, ToggleButton:pressed">
 		<Setter Property="RenderTransform" Value="scale(1)" />
 	</Style>
@@ -187,10 +187,32 @@
 		<Setter Property="BorderThickness" Value="1" />
 	</Style>
 
-	<Style Selector="MenuItem[Header=-]">
+	<Style Selector="MenuItem[Header=-][Tag=]">
 		<Setter Property="Height" Value="4" />
 	</Style>
-	
+
+	<Style Selector="Menu#ActionMenu MenuItem MenuItem[Header=-], ContextMenu#ActionMenu MenuItem[Header=-]">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate>
+					<Panel IsVisible="{TemplateBinding IsVisible}" Margin="30 0 0 0">
+						<Rectangle
+							Stroke="{StaticResource MesenGrayBorderColor}"
+							StrokeThickness="1"
+							Height="1"
+						/>
+						<TextBlock
+							HorizontalAlignment="Left"
+							VerticalAlignment="Center"
+							Text="{TemplateBinding Tag}"
+							Background="{DynamicResource MenuFlyoutPresenterBackground}"
+						/>
+					</Panel>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+		
 	<Style Selector="MenuItem > Separator, ContextMenu > Separator">
 		<Setter Property="Background" Value="{DynamicResource MesenMenuSeparatorBackground}" />
 	</Style>
