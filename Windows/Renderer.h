@@ -44,6 +44,10 @@ private:
 	ID3D11SamplerState* _pSamplerPoint = nullptr;
 	ID3D11BlendState* _pBlendState = nullptr;
 
+	ID3D11Texture2D* _pShaderOutputTexture = nullptr;
+	ID3D11RenderTargetView* _pShaderOutputRtv = nullptr;
+	ID3D11ShaderResourceView* _pShaderOutputSrv = nullptr;
+
 	libra_instance_t _libra = {};
 	libra_d3d11_filter_chain_t _filterChain = {};
 	bool _shaderEnabled = false;
@@ -94,7 +98,7 @@ private:
 
 	void SetScreenSize(uint32_t width, uint32_t height);
 
-	ID3D11Texture2D* CreateTexture(uint32_t width, uint32_t height);
+	ID3D11Texture2D* CreateTexture(uint32_t width, uint32_t height, D3D11_USAGE usage = D3D11_USAGE_DYNAMIC, uint32_t bindFlags = D3D11_BIND_SHADER_RESOURCE, uint32_t cpuAccessFlags = D3D11_CPU_ACCESS_WRITE);
 	ID3D11ShaderResourceView* GetShaderResourceView(ID3D11Texture2D* texture);
 	void ResetViewport();
 	void DrawScreen();
@@ -105,6 +109,7 @@ private:
 	HRESULT CreateRenderTargetView();
 	void ReleaseRenderTargetView();
 	HRESULT CreateEmuTextureBuffers();
+	HRESULT CreateShaderOutputBuffers();
 	void ResetTextureBuffers();
 
 	DXGI_FORMAT GetTextureFormat();

@@ -236,6 +236,9 @@ void Renderer::ResetTextureBuffers()
 {
 	CleanupCom(_pTexture);
 	CleanupCom(_pTextureSrv);
+	CleanupCom(_pShaderOutputTexture);
+	CleanupCom(_pShaderOutputRtv);
+	CleanupCom(_pShaderOutputSrv);
 
 	delete[] _textureBuffer[0];
 	_textureBuffer[0] = nullptr;
@@ -258,13 +261,32 @@ HRESULT Renderer::CreateRenderTargetView()
 	D3D11_RENDER_TARGET_VIEW_DESC desc = {};
 	desc.Format = GetTextureFormat();
 	desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-	desc.Texture2D.MipSlice = 0;
 
 	hr = _pd3dDevice->CreateRenderTargetView(pBackBuffer, &desc, &_pRenderTargetView);
 	pBackBuffer->Release();
 	CheckError("D3DDevice::CreateRenderTargetView() failed.");
 
-	_pDeviceContext->OMSetRenderTargets(1, &_pRenderTargetView, nullptr);
+	return S_OK;
+}
+
+HRESULT Renderer::CreateShaderOutputBuffers()
+{
+	_pShaderOutputTexture = CreateTexture(_screenWidth, _screenHeight, D3D11_USAGE_DEFAULT, D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE, 0);
+	if(!_pShaderOutputTexture) {
+		return S_FALSE;
+	}
+
+	D3D11_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.Format = GetTextureFormat();
+	rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+
+	HRESULT hr = _pd3dDevice->CreateRenderTargetView(_pShaderOutputTexture, &rtvDesc, &_pShaderOutputRtv);
+	CheckError("D3DDevice::CreateRenderTargetView() failed.");
+
+	_pShaderOutputSrv = GetShaderResourceView(_pShaderOutputTexture);
+	if(!_pShaderOutputSrv) {
+		return S_FALSE;
+	}
 
 	return S_OK;
 }
@@ -286,7 +308,7 @@ HRESULT Renderer::CreateEmuTextureBuffers()
 	if(!_pTextureSrv) {
 		return S_FALSE;
 	}
-	return S_OK;
+	return CreateShaderOutputBuffers();
 }
 
 void Renderer::LogError(const char* msg, HRESULT hr)
@@ -621,24 +643,21 @@ void Renderer::LogShaderError(const char* msg, libra_error_t error)
 	_libra.error_free(&error);
 }
 
-ID3D11Texture2D* Renderer::CreateTexture(uint32_t width, uint32_t height)
+ID3D11Texture2D* Renderer::CreateTexture(uint32_t width, uint32_t height, D3D11_USAGE usage, uint32_t bindFlags, uint32_t cpuAccessFlags)
 {
 	ID3D11Texture2D* texture;
 
 	D3D11_TEXTURE2D_DESC desc;
 	ZeroMemory(&desc, sizeof(D3D11_TEXTURE2D_DESC));
 	desc.ArraySize = 1;
-	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	desc.BindFlags = bindFlags;
+	desc.CPUAccessFlags = cpuAccessFlags;
 	desc.Format = GetTextureFormat();
 	desc.MipLevels = 1;
-	desc.MiscFlags = 0;
 	desc.SampleDesc.Count = 1;
-	desc.SampleDesc.Quality = 0;
-	desc.Usage = D3D11_USAGE_DYNAMIC;
+	desc.Usage = usage;
 	desc.Width = width;
 	desc.Height = height;
-	desc.MiscFlags = 0;
 
 	HRESULT hr = _pd3dDevice->CreateTexture2D(&desc, nullptr, &texture);
 	if(FAILED(hr)) {
@@ -761,26 +780,22 @@ void Renderer::DrawScreen()
 	}
 	_pDeviceContext->Unmap(_pTexture, 0);
 
-	if(_shaderEnabled) {
-		frame_d3d11_opt_t frame_opt = {};
-		libra_viewport_t viewport = {};
-		viewport.x = _leftMargin;
-		viewport.y = _topMargin;
-		viewport.width = _screenWidth;
-		viewport.height = _screenHeight;
+	RECT destRect;
+	destRect.left = _leftMargin;
+	destRect.top = _topMargin;
+	destRect.right = _screenWidth + _leftMargin;
+	destRect.bottom = _screenHeight + _topMargin;
 
-		libra_error_t error = _libra.d3d11_filter_chain_frame(&_filterChain, _pDeviceContext, _frameNumber, _pTextureSrv, _pRenderTargetView, &viewport, NULL, &frame_opt);
+	if(_shaderEnabled) {
+		libra_error_t error = _libra.d3d11_filter_chain_frame(&_filterChain, _pDeviceContext, _frameNumber, _pTextureSrv, _pShaderOutputRtv, NULL, NULL, NULL);
 		if(error) {
 			LogShaderError("[librashader] d3d11_filter_chain_frame failed: ", error);
 		}
 
 		ResetViewport();
+		_pDeviceContext->OMSetRenderTargets(1, &_pRenderTargetView, nullptr);
+		DrawTexture(_pShaderOutputSrv, destRect);
 	} else {
-		RECT destRect;
-		destRect.left = _leftMargin;
-		destRect.top = _topMargin;
-		destRect.right = _screenWidth + _leftMargin;
-		destRect.bottom = _screenHeight + _topMargin;
 		DrawTexture(_pTextureSrv, destRect);
 	}
 }
@@ -878,13 +893,11 @@ void Renderer::Render(RenderSurfaceInfo& emuHud, RenderSurfaceInfo& scriptHud)
 		}
 	}
 
-	_pDeviceContext->OMSetRenderTargets(1, &_pRenderTargetView, nullptr);
-
 	VideoConfig& cfg = _emu->GetSettings()->GetVideoConfig();
 
 	// Clear the back buffer
+	_pDeviceContext->OMSetRenderTargets(1, &_pRenderTargetView, nullptr);
 	_pDeviceContext->ClearRenderTargetView(_pRenderTargetView, Colors::Black);
-
 	_pDeviceContext->OMSetBlendState(_pBlendState, nullptr, 0xFFFFFFFF);
 
 	//Draw screen
