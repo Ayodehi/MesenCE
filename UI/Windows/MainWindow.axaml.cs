@@ -606,8 +606,8 @@ namespace Mesen.Windows
 
 			//Position the renderer in the center
 			ContentControl container = this.GetControl<ContentControl>("RendererContainer");
-			Canvas.SetTop(container, finalSize.Height > _renderer.Height ? (finalSize.Height - _renderer.Height) / 2 : 0);
-			Canvas.SetLeft(container, finalSize.Width > _renderer.Width ? (finalSize.Width - _renderer.Width) / 2 : 0);
+			Canvas.SetTop(container, _rendererPanel.Bounds.Height > _renderer.Height ? (_rendererPanel.Bounds.Height - _renderer.Height) / 2 : 0);
+			Canvas.SetLeft(container, _rendererPanel.Bounds.Width > _renderer.Width ? (_rendererPanel.Bounds.Width - _renderer.Width) / 2 : 0);
 
 			_model.SoftwareRenderer.Width = width;
 			_model.SoftwareRenderer.Height = height;
