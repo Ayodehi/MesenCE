@@ -101,7 +101,7 @@ namespace Mesen.Utilities
 			return null;
 		}
 
-		public static async Task<string?> SaveFile(string? initialFolder, string? initialFile, Window? parent, params string[] extensions)
+		public static async Task<string?> SaveFile(string? initialFolder, string? initialFile, Window? parent, string ext)
 		{
 			if(!((parent ?? ApplicationHelper.GetMainWindow()) is Window wnd)) {
 				throw new Exception("Invalid parent window");
@@ -109,27 +109,27 @@ namespace Mesen.Utilities
 
 			try {
 				List<FilePickerFileType> filter = new List<FilePickerFileType>();
-				foreach(string ext in extensions) {
-					filter.Add(new FilePickerFileType(ext.ToUpper() + " files") { Patterns = new List<string>() { "*." + ext } });
-				}
+				filter.Add(new FilePickerFileType(ext.ToUpper() + " files") { Patterns = new List<string>() { "*." + ext } });
 				filter.Add(new FilePickerFileType("All files") { Patterns = new List<string>() { "*" } });
 
 				IStorageFolder? startLocation = initialFolder != null ? await wnd.StorageProvider.TryGetFolderFromPathAsync(initialFolder) : null;
-				if(OperatingSystem.IsLinux()) {
-					//TODOv2 - setting a start location appears to cause crashes on Linux (dbus crash), force it to null for now
-					startLocation = null;
-				}
 
 				IStorageFile? file = await wnd.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions() {
 					SuggestedStartLocation = startLocation,
-					DefaultExtension = extensions[0],
+					DefaultExtension = ext,
 					ShowOverwritePrompt = true,
 					SuggestedFileName = initialFile,
 					FileTypeChoices = filter
 				});
 
 				if(file != null) {
-					return file.Path.LocalPath;
+					string path = file.Path.LocalPath;
+					//Strip duplicated extensions if the name ends with the same extension 2+ times in a row
+					string doubleExt = "." + ext + "." + ext;
+					while(path.EndsWith(doubleExt, StringComparison.OrdinalIgnoreCase)) {
+						path = path.Substring(0, path.Length - ext.Length - 1);
+					}
+					return path;
 				}
 			} catch(Exception ex) {
 				await MesenMsgBox.ShowException(ex);
