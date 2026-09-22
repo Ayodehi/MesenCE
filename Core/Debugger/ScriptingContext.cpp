@@ -348,7 +348,8 @@ void ScriptingContext::InternalCallMemoryCallback(AddressInfo relAddr, T& value,
 			}
 			address = relAddr.Address;
 		} else {
-			AddressInfo absAddr = _debugger->GetAbsoluteAddress(relAddr);
+			//PPU memory operations (e.g SNES VRAM) arrive with an address that is already absolute
+			AddressInfo absAddr = DebugUtilities::IsRelativeMemory(relAddr.Type) ? _debugger->GetAbsoluteAddress(relAddr) : relAddr;
 			if(!IsAddressMatch(callback, absAddr)) {
 				continue;
 			}
