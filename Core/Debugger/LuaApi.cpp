@@ -154,6 +154,7 @@ int LuaApi::GetLibrary(lua_State* lua)
 		{ "stopExecutionLog", LuaApi::StopExecutionLog },
 		{ "clearExecutionLog", LuaApi::ClearExecutionLog },
 		{ "getExecutionLog", LuaApi::GetExecutionLog },
+		{ "takeExecutionLogDelta", LuaApi::TakeExecutionLogDelta },
 
 		{ "addCheat", LuaApi::AddCheat },
 		{ "clearCheats", LuaApi::ClearCheats },
@@ -1146,6 +1147,16 @@ int LuaApi::GetExecutionLog(lua_State* lua)
 	checkparams();
 	getexecutionlogger();
 	vector<uint8_t> data = logger->Serialize();
+	l.Return(string(data.begin(), data.end()));
+	return l.ReturnCount();
+}
+
+int LuaApi::TakeExecutionLogDelta(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	checkparams();
+	getexecutionlogger();
+	vector<uint8_t> data = logger->TakeDelta();
 	l.Return(string(data.begin(), data.end()));
 	return l.ReturnCount();
 }
