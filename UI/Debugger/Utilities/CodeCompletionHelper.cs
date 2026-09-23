@@ -333,6 +333,7 @@ namespace Mesen.Debugger.Utilities
 	{
 		AccessCounters,
 		Cdl,
+		ExecutionLog,
 		Cheats,
 		SaveStates,
 		Others

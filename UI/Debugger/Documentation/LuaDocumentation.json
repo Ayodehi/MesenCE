@@ -168,6 +168,35 @@
 	"returnValue": { "type": "Array", "description": "Array of bytes" }
 },
 {
+	"name": "startExecutionLog",
+	"category": "Miscellaneous",
+	"subcategory": "ExecutionLog",
+	"description": "Starts recording the SNES CPU's execution log: each instruction it runs with the M/X/E states it ran in, each address an instruction reads or writes, each control transfer (branch, jump, call, return, interrupt) and each DMA/HDMA transfer. Each distinct relationship is kept once with a count, so the log grows with how much of the game has been seen rather than with play time. Recording continues until stopExecutionLog is called; data already recorded is kept.\n\nOnly available for the SNES main CPU.",
+	"parameters": []
+},
+{
+	"name": "stopExecutionLog",
+	"category": "Miscellaneous",
+	"subcategory": "ExecutionLog",
+	"description": "Stops recording the execution log. What was recorded is kept, and can still be read with getExecutionLog.",
+	"parameters": []
+},
+{
+	"name": "clearExecutionLog",
+	"category": "Miscellaneous",
+	"subcategory": "ExecutionLog",
+	"description": "Discards everything the execution log has recorded.",
+	"parameters": []
+},
+{
+	"name": "getExecutionLog",
+	"category": "Miscellaneous",
+	"subcategory": "ExecutionLog",
+	"description": "Returns the execution log recorded so far as a binary string, in the format described in Core/SNES/Debugger/SnesExecutionLogger.cpp: a header with the PRG ROM's CRC32 (as used by the CDL file), then sections of fixed-size records for instructions, memory accesses, control transfers and DMA transfers.",
+	"parameters": [],
+	"returnValue": { "type": "String", "description": "Binary string containing the execution log." }
+},
+{
 	"name": "getCpuState",
 	"category": "Emulation",
 	"description": "Returns a table containing key-value pairs that describe the CPU's current state.\n\nNote: The name of the values returned may change from one version to another. Some values may represent the emulator's internal state and may not be useful (these will be hidden in future versions.)",

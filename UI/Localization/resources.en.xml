@@ -3198,6 +3198,7 @@ E
 		<Enum ID="DocEntrySubcategory">
 			<Value ID="AccessCounters">Access Counters</Value>
 			<Value ID="Cdl">Code/Data Log</Value>
+			<Value ID="ExecutionLog">Execution Log</Value>
 			<Value ID="Cheats">Cheats</Value>
 			<Value ID="SaveStates">Save States</Value>
 			<Value ID="Others">Others</Value>

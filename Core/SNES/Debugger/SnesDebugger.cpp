@@ -2,6 +2,7 @@
 #include "SNES/SnesCpu.h"
 #include "SNES/Coprocessors/SA1/Sa1.h"
 #include "SNES/SnesMemoryManager.h"
+#include "SNES/SnesDmaController.h"
 #include "SNES/BaseCartridge.h"
 #include "SNES/SnesConsole.h"
 #include "SNES/Spc.h"
@@ -11,6 +12,7 @@
 #include "SNES/Debugger/DummySnesCpu.h"
 #include "SNES/Debugger/SnesDisUtils.h"
 #include "SNES/Debugger/SnesCodeDataLogger.h"
+#include "SNES/Debugger/SnesExecutionLogger.h"
 #include "SNES/Debugger/SnesAssembler.h"
 #include "SNES/Debugger/SnesDebugger.h"
 #include "SNES/Debugger/SnesEventManager.h"
@@ -73,6 +75,8 @@ SnesDebugger::SnesDebugger(Debugger* debugger, CpuType cpuType) : IDebugger(debu
 
 		_cdlFile = _codeDataLogger->GetCdlFilePath(_console->GetCartridge()->GetGameboy() ? "SgbFirmware.cdl" : _emu->GetRomInfo().RomFile.GetFileName());
 		_codeDataLogger->LoadCdlFile(_cdlFile, _settings->GetDebugConfig().AutoResetCdl);
+
+		_executionLogger.reset(new SnesExecutionLogger(crc32, console->GetCartridge()->DebugGetPrgRomSize()));
 	} else {
 		_cdl = (SnesCodeDataLogger*)_debugger->GetCdlManager()->GetCodeDataLogger(MemoryType::SnesPrgRom);
 	}
@@ -159,6 +163,10 @@ void SnesDebugger::ProcessInstruction()
 		if(_traceLogger->IsEnabled() || _debuggerEnabled) {
 			_disassembler->BuildCache(addressInfo, cpuFlags, _cpuType);
 		}
+	}
+
+	if(_executionLogger && _executionLogger->IsEnabled()) {
+		_executionLogger->LogInstruction(pc, addressInfo, state.PS, state.EmulationMode, _prevOpCode, _prevProgramCounter);
 	}
 
 	ProcessCallStackUpdates(addressInfo, pc, state.PS, state.SP);
@@ -255,6 +263,13 @@ void SnesDebugger::ProcessRead(uint32_t addr, uint8_t value, MemoryOperationType
 		if(addressInfo.Type == MemoryType::SnesPrgRom && addressInfo.Address >= 0) {
 			_cdl->SetData(addressInfo.Address);
 		}
+		if(_executionLogger && _executionLogger->IsEnabled()) {
+			if(type == MemoryOperationType::DmaRead) {
+				_executionLogger->LogDmaRead(addr, addressInfo, _console->GetDmaController()->GetActiveChannel());
+			} else {
+				_executionLogger->LogRead(_prevProgramCounter, addr, addressInfo, type);
+			}
+		}
 		if(_traceLogger->IsEnabled()) {
 			_traceLogger->LogNonExec(operation, addressInfo);
 		}
@@ -293,6 +308,17 @@ void SnesDebugger::ProcessWrite(uint32_t addr, uint8_t value, MemoryOperationTyp
 
 	if(_traceLogger->IsEnabled()) {
 		_traceLogger->LogNonExec(operation, addressInfo);
+	}
+
+	if(_executionLogger && _executionLogger->IsEnabled()) {
+		if(type == MemoryOperationType::DmaWrite) {
+			SnesDmaController* dma = _console->GetDmaController();
+			uint8_t channel = dma->GetActiveChannel();
+			DmaChannelConfig& config = dma->GetState().Channel[channel & 0x07];
+			_executionLogger->LogDmaWrite(addr, addressInfo, channel, config.DestAddress, config.TransferMode);
+		} else {
+			_executionLogger->LogWrite(_prevProgramCounter, addr, addressInfo, type);
+		}
 	}
 
 	_memoryAccessCounter->ProcessMemoryWrite(addressInfo, _memoryManager->GetMasterClock());
@@ -401,6 +427,15 @@ void SnesDebugger::ProcessInterrupt(uint32_t originalPc, uint32_t currentPc, boo
 	//it only has minor impacts on the debugger (with step out/over)
 	uint16_t originalSp = GetCpuState().SP + 4;
 	_prevStackPointer = originalSp;
+
+	if(_executionLogger && _executionLogger->IsEnabled()) {
+		//A transfer that landed on the interrupted instruction never reaches
+		//ProcessInstruction, since the previous opcode is reset below
+		if(_prevOpCode != 0xFF) {
+			_executionLogger->LogTransfer(_prevOpCode, _prevProgramCounter, originalPc);
+		}
+		_executionLogger->LogInterrupt(originalPc, currentPc, forNmi);
+	}
 
 	//If a call/return occurred just before IRQ, it needs to be processed now
 	ProcessCallStackUpdates(ret, originalPc, GetCpuState().PS, originalSp);
