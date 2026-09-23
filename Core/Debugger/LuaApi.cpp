@@ -29,6 +29,9 @@
 #include "Utilities/HexUtilities.h"
 #include "Utilities/FolderUtilities.h"
 #include "Utilities/magic_enum.hpp"
+#include "Debugger/DebugBreakHelper.h"
+#include "SNES/Debugger/SnesDebugger.h"
+#include "SNES/Debugger/SnesExecutionLogger.h"
 
 #ifdef _MSC_VER
 	//TODO MSVC seems to trigger this by mistake because of the macros?
@@ -146,6 +149,11 @@ int LuaApi::GetLibrary(lua_State* lua)
 		{ "resetAccessCounters", LuaApi::ResetAccessCounters },
 
 		{ "getCdlData", LuaApi::GetCdlData },
+
+		{ "startExecutionLog", LuaApi::StartExecutionLog },
+		{ "stopExecutionLog", LuaApi::StopExecutionLog },
+		{ "clearExecutionLog", LuaApi::ClearExecutionLog },
+		{ "getExecutionLog", LuaApi::GetExecutionLog },
 
 		{ "addCheat", LuaApi::AddCheat },
 		{ "clearCheats", LuaApi::ClearCheats },
@@ -1089,6 +1097,57 @@ int LuaApi::GetCdlData(lua_State* lua)
 	}
 
 	return 1;
+}
+
+static SnesExecutionLogger* GetSnesExecutionLogger(Emulator* emu, Debugger* debugger)
+{
+	if(emu->GetConsoleType() != ConsoleType::Snes) {
+		return nullptr;
+	}
+	SnesDebugger* snesDebugger = (SnesDebugger*)debugger->GetCpuDebugger(CpuType::Snes);
+	return snesDebugger ? snesDebugger->GetExecutionLogger() : nullptr;
+}
+
+#define getexecutionlogger()                                                          \
+	SnesExecutionLogger* logger = GetSnesExecutionLogger(_emu, _debugger);            \
+	errorCond(!logger, "The execution log is only available for the SNES main CPU"); \
+	DebugBreakHelper helper(_debugger);
+
+int LuaApi::StartExecutionLog(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	checkparams();
+	getexecutionlogger();
+	logger->SetEnabled(true);
+	return l.ReturnCount();
+}
+
+int LuaApi::StopExecutionLog(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	checkparams();
+	getexecutionlogger();
+	logger->SetEnabled(false);
+	return l.ReturnCount();
+}
+
+int LuaApi::ClearExecutionLog(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	checkparams();
+	getexecutionlogger();
+	logger->Clear();
+	return l.ReturnCount();
+}
+
+int LuaApi::GetExecutionLog(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	checkparams();
+	getexecutionlogger();
+	vector<uint8_t> data = logger->Serialize();
+	l.Return(string(data.begin(), data.end()));
+	return l.ReturnCount();
 }
 
 int LuaApi::GetScriptDataFolder(lua_State* lua)

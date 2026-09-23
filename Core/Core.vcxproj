@@ -598,6 +598,7 @@
     <ClInclude Include="SNES\SnesCpu.Shared.h" />
     <ClInclude Include="SNES\Coprocessors\SA1\CpuBwRamHandler.h" />
     <ClInclude Include="SNES\Debugger\SnesDebugger.h" />
+    <ClInclude Include="SNES\Debugger\SnesExecutionLogger.h" />
     <ClInclude Include="SNES\Coprocessors\CX4\Cx4.h" />
     <ClInclude Include="SNES\Debugger\Cx4Debugger.h" />
     <ClInclude Include="SNES\Debugger\Cx4DisUtils.h" />
@@ -1001,6 +1002,7 @@
     <ClCompile Include="SNES\SnesControlManager.cpp" />
     <ClCompile Include="SNES\SnesCpu.cpp" />
     <ClCompile Include="SNES\Debugger\SnesDebugger.cpp" />
+    <ClCompile Include="SNES\Debugger\SnesExecutionLogger.cpp" />
     <ClCompile Include="SNES\Debugger\SnesDisUtils.cpp" />
     <ClCompile Include="SNES\Coprocessors\CX4\Cx4.cpp" />
     <ClCompile Include="SNES\Coprocessors\CX4\Cx4.Instructions.cpp" />

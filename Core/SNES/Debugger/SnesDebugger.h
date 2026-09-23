@@ -14,6 +14,7 @@ class CallstackManager;
 class MemoryAccessCounter;
 class SnesMemoryManager;
 class SnesCodeDataLogger;
+class SnesExecutionLogger;
 class EmuSettings;
 class ScriptManager;
 class BaseEventManager;
@@ -47,6 +48,7 @@ class SnesDebugger final : public IDebugger
 	SnesCodeDataLogger* _cdl;
 
 	unique_ptr<SnesCodeDataLogger> _codeDataLogger;
+	unique_ptr<SnesExecutionLogger> _executionLogger;
 	unique_ptr<BaseEventManager> _eventManager;
 	unique_ptr<SnesAssembler> _assembler;
 	unique_ptr<CallstackManager> _callstackManager;
@@ -89,6 +91,8 @@ public:
 
 	uint64_t GetCpuCycleCount(bool forProfiler) override;
 	void ResetPrevOpCode() override;
+
+	SnesExecutionLogger* GetExecutionLogger() { return _executionLogger.get(); }
 
 	void ProcessInstruction();
 	void ProcessRead(uint32_t addr, uint8_t value, MemoryOperationType type);
