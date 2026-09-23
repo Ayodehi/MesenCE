@@ -41,12 +41,16 @@ public:
 	};
 
 private:
+	//`Taken` and `TakenStates` are what the last TakeDelta() reported, so the
+	//next one can report only what changed since.
 	struct InstructionEntry
 	{
 		int32_t AbsAddress;
 		MemKind Kind;
 		uint8_t StateMask;
 		uint32_t Count;
+		uint32_t Taken = 0;
+		uint8_t TakenStates = 0;
 	};
 
 	struct AccessEntry
@@ -54,6 +58,13 @@ private:
 		int32_t AbsAddress;
 		MemKind Kind;
 		uint32_t Count;
+		uint32_t Taken = 0;
+	};
+
+	struct FlowEntry
+	{
+		uint32_t Count = 0;
+		uint32_t Taken = 0;
 	};
 
 	uint32_t _prgRomCrc32;
@@ -62,7 +73,7 @@ private:
 
 	unordered_map<uint32_t, InstructionEntry> _instructions;
 	unordered_map<uint64_t, AccessEntry> _accesses;
-	unordered_map<uint64_t, uint32_t> _flows;
+	unordered_map<uint64_t, FlowEntry> _flows;
 	unordered_map<uint64_t, AccessEntry> _dma;
 
 	//Per channel (0-7 DMA, 8-15 HDMA): the address of a DMA read awaiting
@@ -78,6 +89,7 @@ private:
 	static bool GetFlowKind(uint8_t opCode, uint32_t fromPc, uint32_t toPc, FlowKind& kind);
 	static void AddCount(uint32_t& count);
 	void LogDma(uint32_t busA, AddressInfo& busAAbs, bool toBusA, uint8_t slot, uint8_t dest, uint8_t mode);
+	vector<uint8_t> Write(bool delta);
 
 public:
 	SnesExecutionLogger(uint32_t prgRomCrc32, uint32_t prgRomSize);
@@ -101,5 +113,10 @@ public:
 	void LogDmaRead(uint32_t addr, AddressInfo& info, uint8_t channel);
 	void LogDmaWrite(uint32_t addr, AddressInfo& info, uint8_t channel, uint8_t dest, uint8_t mode);
 
+	//The whole log.
 	vector<uint8_t> Serialize();
+	//What was recorded since the previous call, in the same format: entries
+	//that are new or whose count or width states changed, each count being
+	//the increase. Merging every delta in order gives the whole log.
+	vector<uint8_t> TakeDelta();
 };

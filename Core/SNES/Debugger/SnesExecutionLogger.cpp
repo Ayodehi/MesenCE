@@ -70,13 +70,16 @@ namespace
 		}
 	}
 
-	template<typename K, typename V>
-	vector<K> SortedKeys(const unordered_map<K, V>& map)
+	//The keys of the entries `include` accepts, sorted.
+	template<typename K, typename V, typename F>
+	vector<K> SortedKeys(const unordered_map<K, V>& map, F include)
 	{
 		vector<K> keys;
 		keys.reserve(map.size());
 		for(auto& entry : map) {
-			keys.push_back(entry.first);
+			if(include(entry.second)) {
+				keys.push_back(entry.first);
+			}
 		}
 		std::sort(keys.begin(), keys.end());
 		return keys;
@@ -187,7 +190,7 @@ void SnesExecutionLogger::LogTransfer(uint8_t opCode, uint32_t fromPc, uint32_t 
 	FlowKind kind;
 	if(GetFlowKind(opCode, fromPc, toPc, kind)) {
 		uint64_t key = ((uint64_t)(fromPc & 0xFFFFFF) << 32) | ((uint64_t)(toPc & 0xFFFFFF) << 8) | (uint8_t)kind;
-		AddCount(_flows[key]);
+		AddCount(_flows[key].Count);
 	}
 }
 
@@ -195,7 +198,7 @@ void SnesExecutionLogger::LogInterrupt(uint32_t originalPc, uint32_t handlerPc, 
 {
 	FlowKind kind = forNmi ? FlowKind::Nmi : FlowKind::Irq;
 	uint64_t key = ((uint64_t)(originalPc & 0xFFFFFF) << 32) | ((uint64_t)(handlerPc & 0xFFFFFF) << 8) | (uint8_t)kind;
-	AddCount(_flows[key]);
+	AddCount(_flows[key].Count);
 }
 
 void SnesExecutionLogger::LogDmaRead(uint32_t addr, AddressInfo& info, uint8_t channel)
@@ -258,6 +261,36 @@ void SnesExecutionLogger::LogDma(uint32_t busA, AddressInfo& busAAbs, bool toBus
 
 vector<uint8_t> SnesExecutionLogger::Serialize()
 {
+	return Write(false);
+}
+
+vector<uint8_t> SnesExecutionLogger::TakeDelta()
+{
+	vector<uint8_t> out = Write(true);
+	for(auto& e : _instructions) {
+		e.second.Taken = e.second.Count;
+		e.second.TakenStates = e.second.StateMask;
+	}
+	for(auto& e : _accesses) {
+		e.second.Taken = e.second.Count;
+	}
+	for(auto& e : _flows) {
+		e.second.Taken = e.second.Count;
+	}
+	for(auto& e : _dma) {
+		e.second.Taken = e.second.Count;
+	}
+	return out;
+}
+
+vector<uint8_t> SnesExecutionLogger::Write(bool delta)
+{
+	//In a delta, only what changed since the last take, counting the increase
+	auto newInstruction = [&](const InstructionEntry& e) { return !delta || e.Count != e.Taken || e.StateMask != e.TakenStates; };
+	auto newAccess = [&](const AccessEntry& e) { return !delta || e.Count != e.Taken; };
+	auto newFlow = [&](const FlowEntry& e) { return !delta || e.Count != e.Taken; };
+	auto accessCount = [&](const AccessEntry& e) { return delta ? e.Count - e.Taken : e.Count; };
+
 	vector<uint8_t> out;
 	PutTag(out, "MXLG");
 	Put16(out, 1);
@@ -274,17 +307,18 @@ vector<uint8_t> SnesExecutionLogger::Serialize()
 	};
 
 	//Instructions
+	vector<uint32_t> pcs = SortedKeys(_instructions, newInstruction);
 	PutTag(out, "INST");
 	Put32(out, 16);
-	Put32(out, (uint32_t)_instructions.size());
-	for(uint32_t pc : SortedKeys(_instructions)) {
+	Put32(out, (uint32_t)pcs.size());
+	for(uint32_t pc : pcs) {
 		InstructionEntry& e = _instructions[pc];
 		Put32(out, pc);
 		Put32(out, (uint32_t)e.AbsAddress);
 		Put8(out, (uint8_t)e.Kind);
 		Put8(out, e.StateMask);
 		Put16(out, 0);
-		Put32(out, e.Count);
+		Put32(out, delta ? e.Count - e.Taken : e.Count);
 	}
 
 	//Accesses, merged into runs of consecutive addresses
@@ -293,7 +327,7 @@ vector<uint8_t> SnesExecutionLogger::Serialize()
 	size_t accessCountPos = out.size();
 	Put32(out, 0);
 	uint32_t runs = 0;
-	vector<uint64_t> keys = SortedKeys(_accesses);
+	vector<uint64_t> keys = SortedKeys(_accesses, newAccess);
 	for(size_t i = 0; i < keys.size();) {
 		uint64_t key = keys[i];
 		uint32_t pc = (uint32_t)(key >> 32);
@@ -301,7 +335,7 @@ vector<uint8_t> SnesExecutionLogger::Serialize()
 		uint8_t access = key & 0xFF;
 		AccessEntry& first = _accesses[key];
 		uint32_t len = 1;
-		uint64_t count = first.Count;
+		uint64_t count = accessCount(first);
 		size_t j = i + 1;
 		while(j < keys.size()) {
 			uint64_t next = keys[j];
@@ -310,7 +344,7 @@ vector<uint8_t> SnesExecutionLogger::Serialize()
 			if(!adjacent) {
 				break;
 			}
-			count += e.Count;
+			count += accessCount(e);
 			len++;
 			j++;
 		}
@@ -328,16 +362,18 @@ vector<uint8_t> SnesExecutionLogger::Serialize()
 	countAt(accessCountPos, runs);
 
 	//Control transfers
+	vector<uint64_t> flowKeys = SortedKeys(_flows, newFlow);
 	PutTag(out, "FLOW");
 	Put32(out, 16);
-	Put32(out, (uint32_t)_flows.size());
-	for(uint64_t key : SortedKeys(_flows)) {
+	Put32(out, (uint32_t)flowKeys.size());
+	for(uint64_t key : flowKeys) {
+		FlowEntry& e = _flows[key];
 		Put32(out, (uint32_t)(key >> 32));
 		Put32(out, (uint32_t)(key >> 8) & 0xFFFFFF);
 		Put8(out, key & 0xFF);
 		Put8(out, 0);
 		Put16(out, 0);
-		Put32(out, _flows[key]);
+		Put32(out, delta ? e.Count - e.Taken : e.Count);
 	}
 
 	//DMA, merged into runs of consecutive A-bus addresses
@@ -346,7 +382,7 @@ vector<uint8_t> SnesExecutionLogger::Serialize()
 	size_t dmaCountPos = out.size();
 	Put32(out, 0);
 	runs = 0;
-	keys = SortedKeys(_dma);
+	keys = SortedKeys(_dma, newAccess);
 	for(size_t i = 0; i < keys.size();) {
 		uint64_t key = keys[i];
 		uint32_t pc = (uint32_t)(key >> 40);
@@ -356,7 +392,7 @@ vector<uint8_t> SnesExecutionLogger::Serialize()
 		uint8_t flags = key & 0x1F;
 		AccessEntry& first = _dma[key];
 		uint32_t len = 1;
-		uint64_t count = first.Count;
+		uint64_t count = accessCount(first);
 		size_t j = i + 1;
 		while(j < keys.size()) {
 			uint64_t next = keys[j];
@@ -365,7 +401,7 @@ vector<uint8_t> SnesExecutionLogger::Serialize()
 			if(!adjacent) {
 				break;
 			}
-			count += e.Count;
+			count += accessCount(e);
 			len++;
 			j++;
 		}

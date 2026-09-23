@@ -197,6 +197,14 @@
 	"returnValue": { "type": "String", "description": "Binary string containing the execution log." }
 },
 {
+	"name": "takeExecutionLogDelta",
+	"category": "Miscellaneous",
+	"subcategory": "ExecutionLog",
+	"description": "Returns what the execution log recorded since the previous call, as a binary string in the same format as getExecutionLog: entries that are new or whose count or width states changed, each count being the increase since the previous call. Merging every delta in order gives the whole log, and getExecutionLog is unaffected.",
+	"parameters": [],
+	"returnValue": { "type": "String", "description": "Binary string containing the execution log's new entries." }
+},
+{
 	"name": "getCpuState",
 	"category": "Emulation",
 	"description": "Returns a table containing key-value pairs that describe the CPU's current state.\n\nNote: The name of the values returned may change from one version to another. Some values may represent the emulator's internal state and may not be useful (these will be hidden in future versions.)",

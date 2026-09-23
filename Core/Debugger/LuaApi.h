@@ -110,6 +110,7 @@ public:
 	static int StopExecutionLog(lua_State* lua);
 	static int ClearExecutionLog(lua_State* lua);
 	static int GetExecutionLog(lua_State* lua);
+	static int TakeExecutionLogDelta(lua_State* lua);
 
 private:
 	static FrameInfo InternalGetScreenSize();
