@@ -13,6 +13,7 @@ class MemoryAccessCounter;
 class SnesMemoryManager;
 class BreakpointManager;
 class EmuSettings;
+class SpcExecutionLogger;
 
 enum class MemoryOperationType;
 
@@ -29,6 +30,7 @@ class SpcDebugger final : public IDebugger
 	unique_ptr<BreakpointManager> _breakpointManager;
 	unique_ptr<SpcTraceLogger> _traceLogger;
 	unique_ptr<DummySpc> _dummyCpu;
+	unique_ptr<SpcExecutionLogger> _executionLogger;
 
 	uint8_t _prevOpCode = 0xFF;
 	uint8_t _prevStackPointer = 0;
@@ -40,6 +42,7 @@ class SpcDebugger final : public IDebugger
 
 public:
 	SpcDebugger(Debugger* debugger);
+	~SpcDebugger();
 
 	void Reset() override;
 
@@ -69,4 +72,6 @@ public:
 	ISerializable* GetSerializableCpu() override;
 
 	BaseState& GetState() override;
+
+	SpcExecutionLogger* GetExecutionLogger() { return _executionLogger.get(); }
 };

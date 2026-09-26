@@ -2,6 +2,7 @@
 #include "pch.h"
 #include "Debugger/DebugTypes.h"
 #include "Shared/MemoryOperationType.h"
+#include "SNES/Debugger/IExecutionLogger.h"
 
 //Records what the SNES CPU did as a set of distinct relationships, each kept
 //once with a count: the instructions it ran and the M/X/E states they ran in,
@@ -11,7 +12,7 @@
 //
 //The binary format written by Serialize() is described in
 //SnesExecutionLogger.cpp. All values are little-endian.
-class SnesExecutionLogger
+class SnesExecutionLogger final : public IExecutionLogger
 {
 public:
 	enum class FlowKind : uint8_t
@@ -94,9 +95,9 @@ private:
 public:
 	SnesExecutionLogger(uint32_t prgRomCrc32, uint32_t prgRomSize);
 
-	bool IsEnabled() { return _enabled; }
-	void SetEnabled(bool enabled);
-	void Clear();
+	bool IsEnabled() override { return _enabled; }
+	void SetEnabled(bool enabled) override;
+	void Clear() override;
 
 	//Called by SnesDebugger. `prevOpCode` and `prevPc` describe the instruction
 	//that ran before `pc` (0xFF when there is none, e.g. after an interrupt).
@@ -114,9 +115,9 @@ public:
 	void LogDmaWrite(uint32_t addr, AddressInfo& info, uint8_t channel, uint8_t dest, uint8_t mode);
 
 	//The whole log.
-	vector<uint8_t> Serialize();
+	vector<uint8_t> Serialize() override;
 	//What was recorded since the previous call, in the same format: entries
 	//that are new or whose count or width states changed, each count being
 	//the increase. Merging every delta in order gives the whole log.
-	vector<uint8_t> TakeDelta();
+	vector<uint8_t> TakeDelta() override;
 };

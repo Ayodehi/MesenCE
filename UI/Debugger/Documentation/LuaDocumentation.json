@@ -171,29 +171,37 @@
 	"name": "startExecutionLog",
 	"category": "Miscellaneous",
 	"subcategory": "ExecutionLog",
-	"description": "Starts recording the SNES CPU's execution log: each instruction it runs with the M/X/E states it ran in, each address an instruction reads or writes, each control transfer (branch, jump, call, return, interrupt) and each DMA/HDMA transfer. Each distinct relationship is kept once with a count, so the log grows with how much of the game has been seen rather than with play time. Recording continues until stopExecutionLog is called; data already recorded is kept.\n\nOnly available for the SNES main CPU.",
-	"parameters": []
+	"description": "Starts recording a CPU's execution log: each instruction it runs (with the M/X/E states it ran in, for the main CPU), each address an instruction reads or writes, each control transfer (branch, jump, call, return, interrupt) and, for the main CPU, each DMA/HDMA transfer. For the SPC700 the log also keeps the addresses the DSP reads and writes by itself: the sample directory, BRR sample data and the echo buffer. Each distinct relationship is kept once with a count, so the log grows with how much of the game has been seen rather than with play time. Recording continues until stopExecutionLog is called; data already recorded is kept.\n\nAvailable for the SNES main CPU and the SPC700.",
+	"parameters": [
+		{ "name": "cpuType", "type": "Enum", "enumName": "cpuType", "description": "The SNES main CPU (the default) or the SPC700", "defaultValue": "main CPU" }
+	]
 },
 {
 	"name": "stopExecutionLog",
 	"category": "Miscellaneous",
 	"subcategory": "ExecutionLog",
 	"description": "Stops recording the execution log. What was recorded is kept, and can still be read with getExecutionLog.",
-	"parameters": []
+	"parameters": [
+		{ "name": "cpuType", "type": "Enum", "enumName": "cpuType", "description": "The SNES main CPU (the default) or the SPC700", "defaultValue": "main CPU" }
+	]
 },
 {
 	"name": "clearExecutionLog",
 	"category": "Miscellaneous",
 	"subcategory": "ExecutionLog",
 	"description": "Discards everything the execution log has recorded.",
-	"parameters": []
+	"parameters": [
+		{ "name": "cpuType", "type": "Enum", "enumName": "cpuType", "description": "The SNES main CPU (the default) or the SPC700", "defaultValue": "main CPU" }
+	]
 },
 {
 	"name": "getExecutionLog",
 	"category": "Miscellaneous",
 	"subcategory": "ExecutionLog",
-	"description": "Returns the execution log recorded so far as a binary string, in the format described in Core/SNES/Debugger/SnesExecutionLogger.cpp: a header with the PRG ROM's CRC32 (as used by the CDL file), then sections of fixed-size records for instructions, memory accesses, control transfers and DMA transfers.",
-	"parameters": [],
+	"description": "Returns the execution log recorded so far as a binary string, in the format described in Core/SNES/Debugger/SnesExecutionLogger.cpp (and, for the SPC700, SpcExecutionLogger.cpp): a header with the PRG ROM's CRC32 (as used by the CDL file), then sections of fixed-size records for instructions, memory accesses, control transfers and DMA transfers.",
+	"parameters": [
+		{ "name": "cpuType", "type": "Enum", "enumName": "cpuType", "description": "The SNES main CPU (the default) or the SPC700", "defaultValue": "main CPU" }
+	],
 	"returnValue": { "type": "String", "description": "Binary string containing the execution log." }
 },
 {
@@ -201,7 +209,9 @@
 	"category": "Miscellaneous",
 	"subcategory": "ExecutionLog",
 	"description": "Returns what the execution log recorded since the previous call, as a binary string in the same format as getExecutionLog: entries that are new or whose count or width states changed, each count being the increase since the previous call. Merging every delta in order gives the whole log, and getExecutionLog is unaffected.",
-	"parameters": [],
+	"parameters": [
+		{ "name": "cpuType", "type": "Enum", "enumName": "cpuType", "description": "The SNES main CPU (the default) or the SPC700", "defaultValue": "main CPU" }
+	],
 	"returnValue": { "type": "String", "description": "Binary string containing the execution log's new entries." }
 },
 {
