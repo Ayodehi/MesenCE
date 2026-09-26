@@ -2,8 +2,10 @@
 #include "SNES/Spc.h"
 #include "SNES/SnesMemoryManager.h"
 #include "SNES/SnesConsole.h"
+#include "SNES/BaseCartridge.h"
 #include "SNES/Debugger/SpcDebugger.h"
 #include "SNES/Debugger/SpcDisUtils.h"
+#include "SNES/Debugger/SpcExecutionLogger.h"
 #include "SNES/Debugger/DummySpc.h"
 #include "SNES/Debugger/TraceLogger/SpcTraceLogger.h"
 #include "Debugger/DisassemblyInfo.h"
@@ -16,6 +18,7 @@
 #include "Shared/EmuSettings.h"
 #include "Shared/Emulator.h"
 #include "Shared/MemoryOperationType.h"
+#include "Utilities/CRC32.h"
 
 SpcDebugger::SpcDebugger(Debugger* debugger) : IDebugger(debugger->GetEmulator())
 {
@@ -35,6 +38,16 @@ SpcDebugger::SpcDebugger(Debugger* debugger) : IDebugger(debugger->GetEmulator()
 	_callstackManager.reset(new CallstackManager(debugger, this));
 	_breakpointManager.reset(new BreakpointManager(debugger, this, CpuType::Spc, debugger->GetEventManager(CpuType::Snes)));
 	_step.reset(new StepRequest());
+
+	//The header names the game by its PRG ROM, as the main CPU's log does
+	ConsoleMemoryInfo prgRom = _debugger->GetEmulator()->GetMemory(MemoryType::SnesPrgRom);
+	uint32_t crc32 = prgRom.Memory ? CRC32::GetCRC((uint8_t*)prgRom.Memory, prgRom.Size) : 0;
+	uint32_t prgRomSize = console->GetCartridge() ? console->GetCartridge()->DebugGetPrgRomSize() : 0;
+	_executionLogger.reset(new SpcExecutionLogger(crc32, prgRomSize));
+}
+
+SpcDebugger::~SpcDebugger()
+{
 }
 
 void SpcDebugger::Reset()
@@ -61,6 +74,10 @@ void SpcDebugger::ProcessInstruction()
 	InstructionProgress.StartCycle = state.Cycle;
 
 	_disassembler->BuildCache(addressInfo, 0, CpuType::Spc);
+
+	if(_executionLogger->IsEnabled()) {
+		_executionLogger->LogInstruction(addr, addressInfo, _prevOpCode, (uint16_t)_prevProgramCounter);
+	}
 
 	if(SpcDisUtils::IsJumpToSub(_prevOpCode)) {
 		//JSR, BRK, PCALL, TCALL
@@ -134,6 +151,9 @@ void SpcDebugger::ProcessRead(uint32_t addr, uint8_t value, MemoryOperationType 
 			_debugger->ProcessBreakConditions(CpuType::Spc, *_step.get(), _breakpointManager.get(), operation, addressInfo);
 		} else {
 			_memoryAccessCounter->ProcessMemoryRead(addressInfo, _memoryManager->GetMasterClock());
+			if(_executionLogger->IsEnabled()) {
+				_executionLogger->LogRead((uint16_t)_prevProgramCounter, (uint16_t)addr, addressInfo, type);
+			}
 			if(_traceLogger->IsEnabled()) {
 				_traceLogger->LogNonExec(operation, addressInfo);
 			}
@@ -141,6 +161,9 @@ void SpcDebugger::ProcessRead(uint32_t addr, uint8_t value, MemoryOperationType 
 		}
 	} else {
 		//DSP read
+		if(_executionLogger->IsEnabled()) {
+			_executionLogger->LogDspRead((uint16_t)addr);
+		}
 		if(!_ignoreDspReadWrites) {
 			AddressInfo addressInfo { (int32_t)addr, MemoryType::SpcRam }; //DSP reads never read from the IPL ROM
 
@@ -164,12 +187,18 @@ void SpcDebugger::ProcessWrite(uint32_t addr, uint8_t value, MemoryOperationType
 		//SPC write
 		_debugger->ProcessBreakConditions(CpuType::Spc, *_step.get(), _breakpointManager.get(), operation, addressInfo);
 		_memoryAccessCounter->ProcessMemoryWrite(addressInfo, _memoryManager->GetMasterClock());
+		if(_executionLogger->IsEnabled()) {
+			_executionLogger->LogWrite((uint16_t)_prevProgramCounter, (uint16_t)addr, addressInfo, type);
+		}
 
 		if(_traceLogger->IsEnabled()) {
 			_traceLogger->LogNonExec(operation, addressInfo);
 		}
 	} else {
 		//DSP write
+		if(_executionLogger->IsEnabled()) {
+			_executionLogger->LogDspWrite((uint16_t)addr);
+		}
 		if(!_ignoreDspReadWrites) {
 			_debugger->ProcessBreakConditions(CpuType::Spc, *_step.get(), _breakpointManager.get(), operation, addressInfo);
 			_memoryAccessCounter->ProcessMemoryWrite(addressInfo, _memoryManager->GetMasterClock());

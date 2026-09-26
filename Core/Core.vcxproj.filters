@@ -1180,6 +1180,15 @@
     <ClInclude Include="SNES\Debugger\SnesExecutionLogger.h">
       <Filter>SNES\Debugger</Filter>
     </ClInclude>
+    <ClCompile Include="SNES\Debugger\SpcExecutionLogger.cpp">
+      <Filter>SNES\Debugger</Filter>
+    </ClCompile>
+    <ClInclude Include="SNES\Debugger\SpcExecutionLogger.h">
+      <Filter>SNES\Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="SNES\Debugger\IExecutionLogger.h">
+      <Filter>SNES\Debugger</Filter>
+    </ClInclude>
     <ClCompile Include="SNES\Debugger\SnesDisUtils.cpp">
       <Filter>SNES\Debugger</Filter>
     </ClCompile>

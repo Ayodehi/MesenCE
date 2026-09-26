@@ -32,6 +32,8 @@
 #include "Debugger/DebugBreakHelper.h"
 #include "SNES/Debugger/SnesDebugger.h"
 #include "SNES/Debugger/SnesExecutionLogger.h"
+#include "SNES/Debugger/SpcExecutionLogger.h"
+#include "SNES/Debugger/SpcDebugger.h"
 
 #ifdef _MSC_VER
 	//TODO MSVC seems to trigger this by mistake because of the macros?
@@ -1100,24 +1102,34 @@ int LuaApi::GetCdlData(lua_State* lua)
 	return 1;
 }
 
-static SnesExecutionLogger* GetSnesExecutionLogger(Emulator* emu, Debugger* debugger)
+//The execution log of the SNES main CPU or of the SPC700
+static IExecutionLogger* GetExecutionLogger(Emulator* emu, Debugger* debugger, CpuType cpuType)
 {
 	if(emu->GetConsoleType() != ConsoleType::Snes) {
 		return nullptr;
 	}
-	SnesDebugger* snesDebugger = (SnesDebugger*)debugger->GetCpuDebugger(CpuType::Snes);
-	return snesDebugger ? snesDebugger->GetExecutionLogger() : nullptr;
+	if(cpuType == CpuType::Snes) {
+		SnesDebugger* snesDebugger = (SnesDebugger*)debugger->GetCpuDebugger(CpuType::Snes);
+		return snesDebugger ? snesDebugger->GetExecutionLogger() : nullptr;
+	} else if(cpuType == CpuType::Spc) {
+		SpcDebugger* spcDebugger = (SpcDebugger*)debugger->GetCpuDebugger(CpuType::Spc);
+		return spcDebugger ? spcDebugger->GetExecutionLogger() : nullptr;
+	}
+	return nullptr;
 }
 
-#define getexecutionlogger()                                                          \
-	SnesExecutionLogger* logger = GetSnesExecutionLogger(_emu, _debugger);            \
-	errorCond(!logger, "The execution log is only available for the SNES main CPU"); \
+//The optional parameter is the CPU, the SNES main CPU by default
+#define getexecutionlogger()                                                                              \
+	l.ForceParamCount(1);                                                                                 \
+	CpuType cpuType = (CpuType)l.ReadInteger((uint32_t)CpuType::Snes);                                    \
+	checkEnum(CpuType, cpuType, "invalid cpu type");                                                      \
+	IExecutionLogger* logger = GetExecutionLogger(_emu, _debugger, cpuType);                              \
+	errorCond(!logger, "The execution log is only available for the SNES main CPU and the SPC700");      \
 	DebugBreakHelper helper(_debugger);
 
 int LuaApi::StartExecutionLog(lua_State* lua)
 {
 	LuaCallHelper l(lua);
-	checkparams();
 	getexecutionlogger();
 	logger->SetEnabled(true);
 	return l.ReturnCount();
@@ -1126,7 +1138,6 @@ int LuaApi::StartExecutionLog(lua_State* lua)
 int LuaApi::StopExecutionLog(lua_State* lua)
 {
 	LuaCallHelper l(lua);
-	checkparams();
 	getexecutionlogger();
 	logger->SetEnabled(false);
 	return l.ReturnCount();
@@ -1135,7 +1146,6 @@ int LuaApi::StopExecutionLog(lua_State* lua)
 int LuaApi::ClearExecutionLog(lua_State* lua)
 {
 	LuaCallHelper l(lua);
-	checkparams();
 	getexecutionlogger();
 	logger->Clear();
 	return l.ReturnCount();
@@ -1144,7 +1154,6 @@ int LuaApi::ClearExecutionLog(lua_State* lua)
 int LuaApi::GetExecutionLog(lua_State* lua)
 {
 	LuaCallHelper l(lua);
-	checkparams();
 	getexecutionlogger();
 	vector<uint8_t> data = logger->Serialize();
 	l.Return(string(data.begin(), data.end()));
@@ -1154,7 +1163,6 @@ int LuaApi::GetExecutionLog(lua_State* lua)
 int LuaApi::TakeExecutionLogDelta(lua_State* lua)
 {
 	LuaCallHelper l(lua);
-	checkparams();
 	getexecutionlogger();
 	vector<uint8_t> data = logger->TakeDelta();
 	l.Return(string(data.begin(), data.end()));
