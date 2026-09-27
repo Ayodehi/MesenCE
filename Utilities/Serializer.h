@@ -147,7 +147,7 @@ private:
 		if constexpr(std::is_same<T, bool>::value) {
 			_mapSaveKeys.push_back(key);
 			_mapSaveValues.push_back({ SerializeMapValueFormat::Bool, (bool)value });
-		} else if constexpr(std::is_integral<T>::value) {
+		} else if constexpr(std::is_integral<T>::value || std::is_enum<T>::value) {
 			_mapSaveKeys.push_back(key);
 			_mapSaveValues.push_back({ SerializeMapValueFormat::Integer, (int64_t)value });
 		} else if constexpr(std::is_floating_point<T>::value) {
@@ -169,7 +169,7 @@ private:
 				if(mapVal.Format == SerializeMapValueFormat::Bool) {
 					value = mapVal.Value.Bool;
 				}
-			} else if constexpr(std::is_integral<T>::value) {
+			} else if constexpr(std::is_integral<T>::value || std::is_enum<T>::value) {
 				if(mapVal.Format == SerializeMapValueFormat::Integer) {
 					value = (T)mapVal.Value.Integer;
 				}
